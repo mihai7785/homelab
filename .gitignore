@@ -1,0 +1,30 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+crash.log
+
+# Ansible
+*.retry
+ansible/inventory/hosts.yml
+ansible/inventory/group_vars/all/vault.yml
+
+# Secrets — never commit these
+*.key
+*.pem
+*secret*
+*password*
+*token*
+kubeconfig
+.kube/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+*.swp
