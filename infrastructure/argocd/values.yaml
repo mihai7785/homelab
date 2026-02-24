@@ -1,0 +1,40 @@
+global:
+  domain: argocd.homelab.local
+
+server:
+  ingress:
+    enabled: false   # we'll add ingress later with cert-manager
+  extraArgs:
+    - --insecure     # disable internal TLS since we'll terminate at ingress later
+
+configs:
+  params:
+    server.insecure: true
+
+# Resource limits appropriate for homelab
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 128Mi
