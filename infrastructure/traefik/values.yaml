@@ -1,0 +1,32 @@
+deployment:
+  replicas: 1
+
+service:
+  type: LoadBalancer
+
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+  websecure:
+    port: 8443
+    exposedPort: 443
+
+ingressRoute:
+  dashboard:
+    enabled: true
+
+dashboard:
+  enabled: true
+
+logs:
+  general:
+    level: INFO
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
