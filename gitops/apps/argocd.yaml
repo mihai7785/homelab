@@ -7,13 +7,16 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://github.com/mihai7785/homelab.git
-    targetRevision: HEAD
-    path: infrastructure/argocd
-    helm:
-      valueFiles:
-        - values.yaml
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: 7.7.0
+      helm:
+        valueFiles:
+          - $values/infrastructure/argocd/values.yaml
+    - repoURL: https://github.com/mihai7785/homelab.git
+      targetRevision: HEAD
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
