@@ -7,16 +7,16 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://github.com/mihai7785/homelab.git
-    targetRevision: HEAD
-    path: infrastructure/traefik
-    helm:
+  sources:
+    - repoURL: https://helm.traefik.io/traefik
       chart: traefik
-      repo: https://helm.traefik.io/traefik
-      version: "32.1.0"
-      valueFiles:
-        - values.yaml
+      targetRevision: 32.1.0
+      helm:
+        valueFiles:
+          - $values/infrastructure/traefik/values.yaml
+    - repoURL: https://github.com/mihai7785/homelab.git
+      targetRevision: HEAD
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik
