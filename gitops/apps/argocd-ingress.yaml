@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/mihai7785/homelab.git
     targetRevision: HEAD
-    path: infrastructure/argocd
+    path: infrastructure/argocd-ingress
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
