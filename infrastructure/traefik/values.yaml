@@ -1,6 +1,10 @@
 deployment:
   replicas: 1
 
+providers:
+  kubernetesCRD:
+    allowCrossNamespace: true
+
 service:
   type: LoadBalancer
 
@@ -11,14 +15,6 @@ ports:
   websecure:
     port: 8443
     exposedPort: 443
-
-ingressRoute:
-  dashboard:
-    enabled: false
-
-logs:
-  general:
-    level: INFO
 
 resources:
   requests:
