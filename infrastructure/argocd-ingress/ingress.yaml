@@ -1,10 +1,26 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
+  name: argocd-http
+  namespace: argocd
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`argocd.homelab.local`)
+      kind: Rule
+      middlewares:
+        - name: redirect-to-https
+          namespace: traefik
+      services:
+        - name: argocd-server
+          port: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
   name: argocd
   namespace: argocd
-  annotations:
-    cert-manager.io/cluster-issuer: homelab-ca-issuer
 spec:
   entryPoints:
     - websecure
