@@ -1,0 +1,56 @@
+---
+- name: Base configuration for k3s cluster nodes
+  hosts: k3s_cluster
+  become: true
+
+  tasks:
+    - name: Set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install base packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - htop
+          - net-tools
+          - ca-certificates
+          - gnupg
+        state: present
+
+    - name: Disable password authentication for SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^PasswordAuthentication"
+        line: "PasswordAuthentication no"
+        state: present
+      notify: restart sshd
+
+    - name: Enable SSH key authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^PubkeyAuthentication"
+        line: "PubkeyAuthentication yes"
+        state: present
+      notify: restart sshd
+
+    - name: Disable root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^PermitRootLogin"
+        line: "PermitRootLogin no"
+        state: present
+      notify: restart sshd
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted
