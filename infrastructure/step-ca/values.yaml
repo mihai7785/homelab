@@ -1,3 +1,11 @@
+ca:
+  name: Homelab CA
+  address: ":9000"
+  dns: "step-ca-step-certificates,step-ca-step-certificates.step-ca,step-ca-step-certificates.step-ca.svc.cluster.local"
+  provisioner:
+    name: acme
+    type: ACME
+
 service:
   type: ClusterIP
   port: 9000
@@ -9,11 +17,3 @@ persistence:
 
 nodeSelector:
   kubernetes.io/hostname: k3s-server-01
-
-ca:
-  name: Homelab CA
-  address: ":9000"
-  dns: "step-ca.step-ca.svc.cluster.local,step-ca"
-  provisioner:
-    name: acme
-    type: ACME
