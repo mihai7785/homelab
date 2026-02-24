@@ -1,17 +1,14 @@
 global:
   domain: argocd.homelab.local
 
-server:
-  ingress:
-    enabled: false   # we'll add ingress later with cert-manager
-  extraArgs:
-    - --insecure     # disable internal TLS since we'll terminate at ingress later
-
 configs:
   params:
     server.insecure: true
+    controller.status.processors: 10
+    controller.operation.processors: 5
+    controller.self.heal.timeout.seconds: 30
+    reposerver.parallelism.limit: 2
 
-# Resource limits appropriate for homelab
 controller:
   resources:
     requests:
