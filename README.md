@@ -3,12 +3,11 @@
 A self-hosted Internal Developer Platform (IDP) built on Kubernetes, following GitOps principles.
 This homelab serves as both a learning environment and a portfolio demonstrating real-world platform engineering practices.
 
-> **Status:** 🚧 Actively being built — see [build phases](#build-phases) for current progress.
+> **Status:** 🚧 Actively being built — see [build phases](#-build-phases) for current progress.
 
 ---
 
 ## 📐 Architecture Overview
-
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         GitHub (Public Mirror)                       │
@@ -34,9 +33,8 @@ This homelab serves as both a learning environment and a portfolio demonstrating
                     ▼                       ▼                       ▼
          ┌─────────────────┐    ┌─────────────────┐    ┌──────────────────┐
          │  Synology NAS   │    │   AWX + Ansible  │    │  NUC14+ (AI)     │
-         │  - Longhorn bkp │    │  - IaC triggers  │    │  - Ollama        │
-         │  - MinIO S3     │    │  - provisioning  │    │  - RTX 4080      │
-         │  - PBS target   │    │  - wired to GH   │    │  - FastAPI GW    │
+         │  - NFS storage  │    │  - IaC triggers  │    │  - Ollama        │
+         │  - PBS target   │    │  - provisioning  │    │  - RTX 4080      │
          └─────────────────┘    └─────────────────┘    └──────────────────┘
 ```
 
@@ -48,34 +46,38 @@ This homelab serves as both a learning environment and a portfolio demonstrating
 |---|---|---|
 | HP Mini PC (main Proxmox) | Hypervisor — hosts all platform VMs | 28 vCPU · 31GB RAM |
 | Asus Mini PC (secondary Proxmox) | Home Assistant + auxiliary VMs | 4 vCPU · 16GB RAM |
-| Synology DS1525+ | NAS — backups, S3, persistent storage | 7TB |
+| Synology DS1525+ | NAS — NFS persistent storage, PBS backup target | 2× 8TB HDD · 1TB NVMe SSD |
 | Asus NUC14+ (daily driver) | AI workloads — Ollama + RTX 4080 | 96GB RAM · RTX 4080 eGPU |
 | 3× Raspberry Pi 4B | Reserved — future worker nodes | 4GB RAM each |
 
 ---
 
 ## 🗂️ Repository Structure
-
 ```
 homelab/
-├── infra/
-│   ├── terraform/        # Proxmox VM provisioning
-│   └── ansible/          # OS config, k3s bootstrap, service config
+├── infrastructure/
+│   ├── terraform/          # Proxmox VM provisioning
+│   ├── ansible/            # OS hardening, k3s bootstrap
+│   ├── argocd/             # ArgoCD Helm values
+│   ├── cert-manager/       # cert-manager values + ClusterIssuer
+│   ├── gitea/              # Gitea Helm values + Traefik IngressRoute
+│   ├── metallb/            # MetalLB values + IP pool config
+│   ├── nfs-provisioner/    # NFS subdir provisioner values
+│   └── traefik/            # Traefik values + dashboard + middleware
 ├── gitops/
-│   ├── core/             # Bootstrap: ArgoCD, cert-manager, ingress
-│   ├── apps/             # ArgoCD Application manifests (App-of-Apps)
-│   └── projects/         # ArgoCD Project definitions
-├── platform/
-│   ├── charts/           # Custom Helm charts
-│   └── values/           # Per-environment Helm values
+│   ├── apps/               # ArgoCD Application manifests (App-of-Apps)
+│   ├── core/               # Bootstrap manifests
+│   └── projects/           # ArgoCD Project definitions
 ├── apps/
-│   └── hello-platform/   # Sample app — FastAPI, Dockerfile, Helm chart, CI
+│   └── hello-platform/     # Sample app — FastAPI, Dockerfile, Helm chart
 ├── monitoring/
-│   ├── dashboards/       # Grafana dashboard JSON
-│   └── alerts/           # Prometheus alerting rules
+│   ├── dashboards/         # Grafana dashboard JSON
+│   └── alerts/             # Prometheus alerting rules
+├── platform/
+│   ├── charts/             # Custom Helm charts
+│   └── values/             # Per-environment Helm values
 └── docs/
-    ├── architecture.md
-    └── adr/              # Architecture Decision Records
+    └── adr/                # Architecture Decision Records
 ```
 
 ---
@@ -87,48 +89,44 @@ homelab/
 |---|---|
 | **Proxmox VE** | Hypervisor — runs all VMs and LXC containers |
 | **Terraform** | VM provisioning via Proxmox provider |
-| **Ansible** | OS configuration, k3s bootstrap, service management |
-| **AWX** | Ansible control plane — UI + scheduling for playbook execution |
+| **Ansible** | OS hardening, k3s bootstrap, cluster configuration |
 
 ### Kubernetes Platform
 | Tool | Purpose |
 |---|---|
-| **k3s** | Lightweight Kubernetes distribution — 3-node cluster |
-| **Helm** | Kubernetes package manager — deploy and manage applications |
-| **Traefik** | Ingress controller — routes external traffic to cluster services |
-| **Longhorn** | Distributed block storage — persistent volumes for stateful apps |
+| **k3s** | Lightweight Kubernetes — 3-node cluster (1 server, 2 workers) |
+| **Helm** | Kubernetes package manager |
+| **Traefik** | Ingress controller — HTTPS routing with HTTP→HTTPS redirect |
+| **MetalLB** | Bare-metal load balancer — exposes services on LAN IPs |
+| **NFS subdir provisioner** | Dynamic PV provisioning backed by Synology NAS SSD |
 
 ### GitOps & CI/CD
 | Tool | Purpose |
 |---|---|
-| **ArgoCD** | GitOps continuous delivery — reconciles cluster state from Git |
-| **Gitea** | Self-hosted Git server — internal source of truth |
-| **Gitea Actions** | CI pipelines — build, test, push images on every commit |
-| **Harbor** | Container registry — image storage, scanning, and replication |
-
-### Observability
-| Tool | Purpose |
-|---|---|
-| **Prometheus** | Metrics collection and alerting |
-| **Grafana** | Dashboards — unified view of metrics and logs |
-| **Loki** | Log aggregation — ships logs from all pods |
-| **Promtail** | Log collection agent — runs on every node |
-| **Alertmanager** | Alert routing — sends to Telegram / Discord |
+| **ArgoCD** | GitOps engine — App-of-Apps pattern, self-managed |
+| **Gitea** | Self-hosted Git — internal mirror, future CI source |
+| **Gitea Actions** | CI pipelines — planned Phase 4 |
+| **Harbor** | Container registry — planned Phase 5 |
 
 ### Security & Certificates
 | Tool | Purpose |
 |---|---|
-| **cert-manager** | Automatic certificate issuance and renewal in Kubernetes |
-| **step-ca** | Internal Certificate Authority — signs certs for `*.homelab.local` |
-| **Let's Encrypt** | Public CA — real certs via DNS-01 challenge (no open ports) |
-| **Vaultwarden** | Self-hosted Bitwarden — secrets and password management |
+| **cert-manager** | Automatic TLS certificate issuance and renewal |
+| **Private CA** | Homelab root CA — signs `*.homelab.local` certificates |
 
-### AI
+### Observability *(planned)*
 | Tool | Purpose |
 |---|---|
-| **Ollama** | Local LLM runtime — runs on NUC14+ with RTX 4080 |
-| **Open WebUI** | Chat interface — deployed in cluster, calls Ollama API |
-| **FastAPI AI Gateway** | Python wrapper — OpenAI-compatible API over Ollama |
+| **Prometheus** | Metrics collection and alerting |
+| **Grafana** | Dashboards and visualisation |
+| **Loki + Promtail** | Log aggregation |
+| **Alertmanager** | Alert routing |
+
+### AI *(planned)*
+| Tool | Purpose |
+|---|---|
+| **Ollama** | Local LLM runtime on NUC14+ with RTX 4080 |
+| **Open WebUI** | Chat interface deployed in cluster |
 
 ---
 
@@ -136,35 +134,40 @@ homelab/
 
 | Phase | Focus | Status |
 |---|---|---|
-| **0 — Foundations** | GitHub structure, Proxmox VMs, DNS via Pi-hole | ✅ In progress |
-| **1 — IaC** | Terraform for VMs, Ansible playbooks, AWX wiring | 🔜 Next |
-| **2 — K8s + GitOps** | k3s cluster, ArgoCD, Gitea, Harbor, first GitOps loop | ⬜ Planned |
-| **3 — CI/CD** | Gitea Actions pipeline: push → build → deploy | ⬜ Planned |
-| **4 — Certificates** | step-ca internal PKI, cert-manager, HTTPS everywhere | ⬜ Planned |
+| **1 — IaC & Cluster** | Terraform VMs, Ansible hardening, k3s 3-node cluster | ✅ Complete |
+| **2 — GitOps Foundation** | ArgoCD App-of-Apps, MetalLB, Traefik, cert-manager, private CA, HTTPS | ✅ Complete |
+| **3 — Developer Platform** | NFS StorageClass (Synology SSD), Gitea with PostgreSQL, TLS, GitHub mirror | ✅ Complete |
+| **4 — CI/CD Pipelines** | Gitea Actions, container builds, automated GitOps deployments | 🔜 Next |
 | **5 — Observability** | Prometheus, Grafana, Loki, Alertmanager, custom dashboards | ⬜ Planned |
-| **6 — AI** | Ollama, alert enricher, Open WebUI, Backstage portal | ⬜ Planned |
+| **6 — AI Integration** | Ollama, Open WebUI, FastAPI AI Gateway | ⬜ Planned |
+
+---
+
+## 🌐 Running Services
+
+| Service | URL | Description |
+|---|---|---|
+| **ArgoCD** | https://argocd.homelab.local | GitOps dashboard — manages all cluster apps |
+| **Traefik** | https://traefik.homelab.local | Ingress controller dashboard |
+| **Gitea** | https://gitea.homelab.local | Self-hosted Git server |
+
+All services run over HTTPS with certificates issued by the homelab private CA.
 
 ---
 
 ## 📖 Architecture Decisions
 
-Key decisions are documented as [Architecture Decision Records](docs/adr/) — short documents explaining *why* a particular approach was chosen, not just what was implemented.
-
-- [ADR-001](docs/adr/001-monorepo.md) — Mono-repo structure
-- [ADR-002](docs/adr/002-k3s-over-kubeadm.md) — k3s over kubeadm
-- [ADR-003](docs/adr/003-certificate-strategy.md) — Certificate management strategy
-
----
-
-## 🔗 Related
-
-- [AWX Ansible Playbooks](https://github.com/mihai7785) — Ansible content used by AWX
-- [Proxmox Backup Server](infra/terraform/) — PBS config targeting Synology NAS
+| ADR | Decision |
+|---|---|
+| [ADR-001](docs/adr/001-monorepo.md) | Mono-repo structure |
+| [ADR-002](docs/adr/002-k3s-over-kubeadm.md) | k3s over kubeadm |
+| [ADR-003](docs/adr/003-certificate-strategy.md) | Certificate management strategy |
+| [ADR-004](docs/adr/004-gitea-self-hosted-git.md) | Self-hosted Git with Gitea |
 
 ---
 
 ## 📝 Notes
 
-This is a living project. Architecture decisions are made deliberately and documented. Every tool in this stack serves a specific purpose — I avoid adding technology for its own sake.
+This is a living project. Architecture decisions are made deliberately and documented. Every tool in this stack serves a specific purpose — technology is not added for its own sake.
 
 All services run on self-hosted infrastructure with no dependency on cloud providers.
