@@ -32,6 +32,8 @@ gitea:
       PROVIDER: memory
     queue:
       TYPE: level
+    actions:
+      ENABLED: true
 
 persistence:
   enabled: true
