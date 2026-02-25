@@ -31,10 +31,11 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
-              while ! docker info > /dev/null 2>&1; do
+              while ! wget -qO- http://127.0.0.1:2375/_ping > /dev/null 2>&1; do
                 echo "Waiting for dind..."
                 sleep 1
               done
+              echo "dind ready"
               if [ ! -f /data/.runner ]; then
                 act_runner register \
                   --no-interactive \
@@ -51,7 +52,7 @@ spec:
                   name: act-runner-secret
                   key: token
             - name: DOCKER_HOST
-              value: tcp://localhost:2375
+              value: tcp://127.0.0.1:2375
             - name: DOCKER_TLS_VERIFY
               value: ""
           volumeMounts:
