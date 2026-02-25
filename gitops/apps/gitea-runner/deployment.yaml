@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: act-runner
+  namespace: gitea-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: act-runner
+  template:
+    metadata:
+      labels:
+        app: act-runner
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: act-runner
+          image: gitea/act_runner:0.2.11
+          command: ["sh", "-c"]
+          args:
+            - |
+              act_runner register \
+                --no-interactive \
+                --instance http://gitea.gitea.svc.cluster.local:3000 \
+                --token $(RUNNER_TOKEN) \
+                --name k3s-runner \
+                --labels ubuntu-latest:docker://node:20-bullseye,ubuntu-22.04:docker://node:20-bullseye
+              act_runner daemon
+          env:
+            - name: RUNNER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: act-runner-secret
+                  key: token
+            - name: DOCKER_HOST
+              value: tcp://localhost:2376
+            - name: DOCKER_TLS_VERIFY
+              value: "1"
+            - name: DOCKER_CERT_PATH
+              value: /certs/client
+          volumeMounts:
+            - name: docker-certs
+              mountPath: /certs/client
+              readOnly: true
+            - name: runner-data
+              mountPath: /data
+        - name: dind
+          image: docker:24-dind
+          securityContext:
+            privileged: true
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: /certs
+          volumeMounts:
+            - name: docker-certs
+              mountPath: /certs
+            - name: runner-data
+              mountPath: /var/lib/docker
+      volumes:
+        - name: docker-certs
+          emptyDir: {}
+        - name: runner-data
+          emptyDir: {}
