@@ -22,7 +22,7 @@ spec:
             - |
               act_runner register \
                 --no-interactive \
-                --instance http://gitea.gitea.svc.cluster.local:3000 \
+                --instance http://gitea-http.gitea.svc.cluster.local:3000 \
                 --token $(RUNNER_TOKEN) \
                 --name k3s-runner \
                 --labels ubuntu-latest:docker://node:20-bullseye,ubuntu-22.04:docker://node:20-bullseye
