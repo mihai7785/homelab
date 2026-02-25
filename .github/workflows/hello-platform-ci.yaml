@@ -1,0 +1,56 @@
+name: hello-platform CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/hello-platform/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/hello-platform
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/hello-platform
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Update image tag in gitops
+        run: |
+          SHA_TAG=$(echo "${{ github.sha }}" | cut -c1-7)
+          sed -i "s|image: ghcr.io/mihai7785/hello-platform:.*|image: ghcr.io/mihai7785/hello-platform:${SHA_TAG}|g" \
+            gitops/apps/hello-platform/deployment.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gitops/apps/hello-platform/deployment.yaml
+          git diff --staged --quiet || git commit -m "chore: update hello-platform image to ${SHA_TAG}"
+          git push
