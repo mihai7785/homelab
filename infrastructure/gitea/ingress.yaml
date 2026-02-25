@@ -1,0 +1,47 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gitea-tls
+  namespace: gitea
+spec:
+  secretName: gitea-tls
+  issuerRef:
+    name: homelab-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - gitea.homelab.local
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gitea
+  namespace: gitea
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`gitea.homelab.local`)
+      kind: Rule
+      services:
+        - name: gitea-http
+          port: 3000
+  tls:
+    secretName: gitea-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gitea-http-redirect
+  namespace: gitea
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`gitea.homelab.local`)
+      kind: Rule
+      middlewares:
+        - name: redirect-to-https
+          namespace: traefik
+      services:
+        - name: gitea-http
+          port: 3000

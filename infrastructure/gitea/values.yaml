@@ -1,0 +1,69 @@
+replicaCount: 1
+
+image:
+  rootless: true
+
+service:
+  http:
+    type: ClusterIP
+    port: 3000
+  ssh:
+    type: ClusterIP
+    port: 22
+
+ingress:
+  enabled: false  # we manage ingress via Traefik IngressRoute manually
+
+gitea:
+  admin:
+    username: mihai
+    password: changeme123
+    email: admin@homelab.local
+  config:
+    server:
+      DOMAIN: gitea.homelab.local
+      ROOT_URL: https://gitea.homelab.local
+      HTTP_PORT: 3000
+    database:
+      DB_TYPE: postgres
+    cache:
+      ADAPTER: memory
+    session:
+      PROVIDER: memory
+    queue:
+      TYPE: level
+
+persistence:
+  enabled: true
+  storageClass: nfs-ssd
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+
+postgresql:
+  enabled: true
+  global:
+    postgresql:
+      auth:
+        password: gitea-db-password
+        username: gitea
+        database: gitea
+  primary:
+    persistence:
+      enabled: true
+      storageClass: nfs-ssd
+      size: 5Gi
+
+postgresql-ha:
+  enabled: false
+
+redis-cluster:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
