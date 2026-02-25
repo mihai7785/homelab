@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: gitea-tls
   issuerRef:
-    name: homelab-ca
+    name: homelab-ca-issuer
     kind: ClusterIssuer
   dnsNames:
     - gitea.homelab.local
