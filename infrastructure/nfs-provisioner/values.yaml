@@ -1,0 +1,19 @@
+nfs:
+  server: 192.168.1.85
+  path: /volume2/k8s-pv
+  mountOptions:
+    - nfsvers=4.1
+
+storageClass:
+  name: nfs-ssd
+  defaultClass: true
+  reclaimPolicy: Retain
+  archiveOnDelete: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
