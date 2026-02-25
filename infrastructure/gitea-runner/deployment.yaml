@@ -29,6 +29,10 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
+              while ! docker info > /dev/null 2>&1; do
+                echo "Waiting for dind to be ready..."
+                sleep 2
+              done
               act_runner register \
                 --no-interactive \
                 --instance http://gitea-http.gitea.svc.cluster.local:3000 \
