@@ -20,10 +20,8 @@ spec:
             privileged: true
           env:
             - name: DOCKER_TLS_CERTDIR
-              value: /certs
+              value: ""
           volumeMounts:
-            - name: docker-certs
-              mountPath: /certs
             - name: runner-data
               mountPath: /var/lib/docker
         - name: act-runner
@@ -31,10 +29,6 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
-              while [ ! -f /certs/client/ca.pem ]; do
-                echo "Waiting for dind TLS certs..."
-                sleep 2
-              done
               act_runner register \
                 --no-interactive \
                 --instance http://gitea-http.gitea.svc.cluster.local:3000 \
@@ -49,19 +43,12 @@ spec:
                   name: act-runner-secret
                   key: token
             - name: DOCKER_HOST
-              value: tcp://localhost:2376
+              value: tcp://localhost:2375
             - name: DOCKER_TLS_VERIFY
-              value: "1"
-            - name: DOCKER_CERT_PATH
-              value: /certs/client
+              value: ""
           volumeMounts:
-            - name: docker-certs
-              mountPath: /certs/client
-              readOnly: true
             - name: runner-data
               mountPath: /data
       volumes:
-        - name: docker-certs
-          emptyDir: {}
         - name: runner-data
           emptyDir: {}
