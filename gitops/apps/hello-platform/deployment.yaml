@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: hello-platform
-          image: ghcr.io/mihai7785/hello-platform:latest
+          image: ghcr.io/mihai7785/hello-platform:e34776b
           ports:
             - containerPort: 8080
           readinessProbe:
