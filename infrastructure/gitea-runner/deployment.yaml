@@ -13,14 +13,6 @@ spec:
       labels:
         app: act-runner
     spec:
-      initContainers:
-        - name: wait-for-docker
-          image: busybox
-          command: ["sh", "-c", "until [ -f /certs/client/ca.pem ]; do echo 'Waiting for dind certs...'; sleep 2; done"]
-          volumeMounts:
-            - name: docker-certs
-              mountPath: /certs/client
-              readOnly: true
       containers:
         - name: dind
           image: docker:24-dind
@@ -39,6 +31,10 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
+              while [ ! -f /certs/client/ca.pem ]; do
+                echo "Waiting for dind TLS certs..."
+                sleep 2
+              done
               act_runner register \
                 --no-interactive \
                 --instance http://gitea-http.gitea.svc.cluster.local:3000 \
