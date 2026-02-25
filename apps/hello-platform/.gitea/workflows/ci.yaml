@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - 'apps/hello-platform/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: echo "TAG=$(echo $GITEA_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t gitea.homelab.local/mihai/hello-platform:${{ steps.tag.outputs.TAG }} \
+            -t gitea.homelab.local/mihai/hello-platform:latest \
+            apps/hello-platform/
+
+      - name: Push to Gitea registry
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | \
+            docker login gitea.homelab.local \
+              --username mihai \
+              --password-stdin
+          docker push gitea.homelab.local/mihai/hello-platform:${{ steps.tag.outputs.TAG }}
+          docker push gitea.homelab.local/mihai/hello-platform:latest
