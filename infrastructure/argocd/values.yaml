@@ -1,6 +1,5 @@
 global:
   domain: argocd.homelab.local
-
 configs:
   params:
     server.insecure: true
@@ -8,7 +7,6 @@ configs:
     controller.operation.processors: 5
     controller.self.heal.timeout.seconds: 30
     reposerver.parallelism.limit: 2
-
 controller:
   resources:
     requests:
@@ -17,16 +15,17 @@ controller:
     limits:
       cpu: 500m
       memory: 512Mi
-
 repoServer:
+  env:
+    - name: ARGOCD_EXEC_TIMEOUT
+      value: "300s"
   resources:
     requests:
       cpu: 100m
       memory: 128Mi
     limits:
-      cpu: 250m
-      memory: 256Mi
-
+      cpu: 500m
+      memory: 512Mi
 server:
   resources:
     requests:
