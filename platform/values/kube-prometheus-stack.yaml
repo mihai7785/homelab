@@ -19,20 +19,10 @@ grafana:
   additionalDataSources:
     - name: Loki
       type: loki
-      url: http://loki.monitoring.svc.cluster.local:3100
-
+      url: http://loki-stack.monitoring.svc.cluster.local:3100
 prometheus:
   prometheusSpec:
     retention: 15d
-    initContainers:
-      - name: fix-permissions
-        image: busybox
-        command: ["sh", "-c", "chown -R 1000:2000 /prometheus && chmod 775 /prometheus"]
-        securityContext:
-          runAsUser: 0
-        volumeMounts:
-          - name: prometheus-db
-            mountPath: /prometheus
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -51,7 +41,6 @@ prometheus:
       - secretName: prometheus-tls
         hosts:
           - prometheus.homelab.local
-
 alertmanager:
   ingress:
     enabled: true
@@ -64,7 +53,6 @@ alertmanager:
       - secretName: alertmanager-tls
         hosts:
           - alertmanager.homelab.local
-
 prometheusOperator:
   admissionWebhooks:
     enabled: false
