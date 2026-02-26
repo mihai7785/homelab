@@ -4,7 +4,7 @@ grafana:
     enabled: true
     ingressClassName: traefik
     annotations:
-      cert-manager.io/cluster-issuer: step-ca-issuer
+      cert-manager.io/cluster-issuer: homelab-ca-issuer
     hosts:
       - grafana.homelab.local
     tls:
