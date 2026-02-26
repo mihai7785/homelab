@@ -7,6 +7,7 @@ configs:
     controller.operation.processors: 5
     controller.self.heal.timeout.seconds: 30
     reposerver.parallelism.limit: 2
+    exec.timeout: "300"
 controller:
   resources:
     requests:
@@ -16,9 +17,6 @@ controller:
       cpu: 500m
       memory: 512Mi
 repoServer:
-  env:
-    - name: ARGOCD_EXEC_TIMEOUT
-      value: "300s"
   resources:
     requests:
       cpu: 100m
