@@ -11,7 +11,7 @@ grafana:
       - secretName: grafana-tls
         hosts:
           - grafana.homelab.local
-  adminPassword: "admin" 
+  adminPassword: "admin"
   persistence:
     enabled: true
     storageClassName: nfs-ssd
@@ -24,6 +24,15 @@ grafana:
 prometheus:
   prometheusSpec:
     retention: 15d
+    initContainers:
+      - name: fix-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 1000:2000 /prometheus && chmod 775 /prometheus"]
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+          - name: prometheus-db
+            mountPath: /prometheus
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -34,6 +43,8 @@ prometheus:
   ingress:
     enabled: true
     ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: homelab-ca-issuer
     hosts:
       - prometheus.homelab.local
     tls:
@@ -45,18 +56,17 @@ alertmanager:
   ingress:
     enabled: true
     ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: homelab-ca-issuer
     hosts:
       - alertmanager.homelab.local
     tls:
       - secretName: alertmanager-tls
         hosts:
           - alertmanager.homelab.local
+
 prometheusOperator:
   admissionWebhooks:
     enabled: false
   tls:
     enabled: false
-grafana:
-  ingress:
-    annotations:
-      cert-manager.io/cluster-issuer: homelab-ca-issuer
