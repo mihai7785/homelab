@@ -51,3 +51,8 @@ alertmanager:
       - secretName: alertmanager-tls
         hosts:
           - alertmanager.homelab.local
+prometheusOperator:
+  admissionWebhooks:
+    enabled: false
+  tls:
+    enabled: false
