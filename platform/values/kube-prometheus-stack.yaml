@@ -56,3 +56,7 @@ prometheusOperator:
     enabled: false
   tls:
     enabled: false
+grafana:
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: homelab-ca-issuer
