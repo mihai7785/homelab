@@ -1,0 +1,25 @@
+# platform/values/loki.yaml
+loki:
+  enabled: true
+  isDefault: false
+  persistence:
+    enabled: true
+    storageClassName: longhorn
+    size: 10Gi
+  config:
+    auth_enabled: false
+    schema_config:
+      configs:
+        - from: "2024-01-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+
+promtail:
+  enabled: true
+  config:
+    clients:
+      - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push

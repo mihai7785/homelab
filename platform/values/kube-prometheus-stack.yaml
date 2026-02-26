@@ -1,0 +1,53 @@
+grafana:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: step-ca-issuer
+    hosts:
+      - grafana.homelab.local
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.homelab.local
+  adminPassword: "admin" 
+  persistence:
+    enabled: true
+    storageClassName: nfs-ssd
+    size: 5Gi
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki.monitoring.svc.cluster.local:3100
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: nfs-ssd
+          resources:
+            requests:
+              storage: 20Gi
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - prometheus.homelab.local
+    tls:
+      - secretName: prometheus-tls
+        hosts:
+          - prometheus.homelab.local
+
+alertmanager:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - alertmanager.homelab.local
+    tls:
+      - secretName: alertmanager-tls
+        hosts:
+          - alertmanager.homelab.local

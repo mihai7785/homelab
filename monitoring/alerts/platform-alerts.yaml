@@ -1,0 +1,27 @@
+# monitoring/alerts/platform-alerts.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: platform-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack   # must match the label selector Prometheus uses
+spec:
+  groups:
+    - name: platform
+      rules:
+        - alert: PodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total[5m]) * 60 > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash-looping"
+
+        - alert: NodeHighMemoryUsage
+          expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} memory > 85%"
