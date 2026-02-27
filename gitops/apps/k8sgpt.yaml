@@ -28,3 +28,14 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: core.k8sgpt.ai
+      kind: K8sGPT
+      jsonPointers:
+        - /spec/ai/anonymized
+        - /spec/ai/language
+        - /spec/ai/maxTokens
+        - /spec/ai/topk
+        - /spec/ai/backOff
+        - /spec/ai/autoRemediation
+        - /spec/repository
