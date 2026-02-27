@@ -1,0 +1,39 @@
+# External Ollama on NUC14+ - do not deploy in-cluster
+ollama:
+  enabled: false
+
+ollamaUrls:
+  - http://192.168.1.94:11434
+
+# Disable optional subcharts we don't need
+pipelines:
+  enabled: false
+
+websocket:
+  enabled: false
+
+persistence:
+  enabled: true
+  storageClass: nfs-ssd
+  size: 5Gi
+
+ingress:
+  enabled: true
+  class: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca-issuer
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  host: openwebui.homelab.local
+  tls:
+    - secretName: openwebui-tls
+      hosts:
+        - openwebui.homelab.local
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 100m
+  limits:
+    memory: 1Gi
+    cpu: 500m
