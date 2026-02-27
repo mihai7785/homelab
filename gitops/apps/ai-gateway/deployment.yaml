@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: ai-gateway
-          image: ghcr.io/mihai7785/ai-gateway:latest
+          image: ghcr.io/mihai7785/ai-gateway:ef6afe3
           ports:
             - containerPort: 8080
               name: http
