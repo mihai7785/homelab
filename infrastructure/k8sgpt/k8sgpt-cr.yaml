@@ -15,9 +15,6 @@ spec:
     - Pod
     - Service
     - PersistentVolumeClaim
-  sink:
-    type: slack
-    enabled: false
   integrations:
     trivy:
       enabled: false
