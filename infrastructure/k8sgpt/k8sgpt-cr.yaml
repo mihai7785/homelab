@@ -1,0 +1,23 @@
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: k8sgpt
+  namespace: k8sgpt
+spec:
+  ai:
+    enabled: true
+    model: llama3.1:8b
+    backend: localai
+    baseUrl: http://192.168.1.94:11434/v1
+  noCache: false
+  filters:
+    - Deployment
+    - Pod
+    - Service
+    - PersistentVolumeClaim
+  sink:
+    type: slack
+    enabled: false
+  integrations:
+    trivy:
+      enabled: false
