@@ -18,3 +18,4 @@ spec:
   integrations:
     trivy:
       enabled: false
+  version: v0.3.43
