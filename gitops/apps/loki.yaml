@@ -14,6 +14,7 @@ spec:
       valuesObject:
         loki:
           enabled: true
+          isDefault: false
           persistence:
             enabled: true
             storageClassName: nfs-ssd   # use whatever your NFS storage class is
