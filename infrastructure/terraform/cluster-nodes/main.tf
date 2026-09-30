@@ -2,8 +2,8 @@ resource "proxmox_virtual_environment_vm" "k3s_server" {
   name      = "k3s-server-01"
   node_name = "homelab"
   vm_id     = 301
-  on_boot   = false
-  started   = false
+  on_boot   = true
+  started   = true
 
   clone {
     vm_id = 9000
