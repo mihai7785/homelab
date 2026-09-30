@@ -2,6 +2,8 @@ resource "proxmox_virtual_environment_vm" "k3s_server" {
   name      = "k3s-server-01"
   node_name = "homelab"
   vm_id     = 301
+  on_boot   = false
+  started   = false
 
   clone {
     vm_id = 9000
@@ -9,12 +11,12 @@ resource "proxmox_virtual_environment_vm" "k3s_server" {
   }
 
   cpu {
-    cores = 2
+    cores = 4
     type  = "x86-64-v2-AES"
   }
 
   memory {
-    dedicated = 4096
+    dedicated = 6144
   }
 
   disk {
@@ -51,6 +53,8 @@ resource "proxmox_virtual_environment_vm" "k3s_worker_01" {
   name      = "k3s-worker-01"
   node_name = "homelab"
   vm_id     = 302
+  on_boot   = false
+  started   = false
 
   clone {
     vm_id = 9000
@@ -63,7 +67,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker_01" {
   }
 
   memory {
-    dedicated = 2048
+    dedicated = 4096
   }
 
   disk {
@@ -100,6 +104,8 @@ resource "proxmox_virtual_environment_vm" "k3s_worker_02" {
   name      = "k3s-worker-02"
   node_name = "homelab"
   vm_id     = 303
+  on_boot   = false
+  started   = false
 
   clone {
     vm_id = 9000
@@ -112,7 +118,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker_02" {
   }
 
   memory {
-    dedicated = 2048
+    dedicated = 4096
   }
 
   disk {
