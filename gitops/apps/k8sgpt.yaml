@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: k8sgpt
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   sources:
