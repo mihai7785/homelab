@@ -25,7 +25,7 @@ k3s for the homelab platform cluster.
 
 3. **Built-in components.** k3s ships with Traefik (ingress), local-path-provisioner (basic storage), CoreDNS, and metrics-server by default. This reduces bootstrap complexity.
 
-4. **ARM64 support.** When Raspberry Pi 4B nodes are added in a later phase, k3s supports ARM64 natively without additional configuration. kubeadm would require more manual work for a mixed x86/ARM64 cluster.
+4. **ARM64 support.** The three Raspberry Pi workers now run ARM64 alongside the amd64 server VM. k3s supports this mixed-architecture cluster; images without ARM64 support must be pinned to amd64.
 
 5. **Existing familiarity.** The `k3s-core` VM already runs k3s. Operational knowledge transfers directly.
 
@@ -34,3 +34,7 @@ k3s for the homelab platform cluster.
 - Some kubeadm-specific knowledge (e.g. `kubeadm init` flags, certificate management via kubeadm) will not be gained from this setup. This is acceptable — kubeadm knowledge is less relevant for platform engineering roles than cluster operations and GitOps.
 - k3s uses `containerd` as the container runtime (no Docker). This is the correct and modern approach — Docker as a Kubernetes runtime is deprecated.
 - Traefik is used as the ingress controller (comes with k3s). Nginx Ingress is more common in enterprise environments, but Traefik is a valid and growing choice and the concepts are transferable.
+
+## Current topology (2026-10-01)
+
+One Proxmox VM (`k3s-server-01`, VM 301) runs the k3s server; `raspberry-agentic-main`, `raspberry-agentic-slave1`, and `raspberry-agentic-slave2` are the workers. The former worker VMs 302 and 303 are retired. See [ADR-008](008-single-server-pi-workers.md) for the topology decision and failure-domain trade-off.

@@ -68,8 +68,9 @@ via label selectors. This means adding observability to a new service requires
 only adding a ServiceMonitor manifest alongside the service — no central Prometheus
 configuration file changes. This is the production Kubernetes approach.
 
-The AI Gateway, k8sgpt operator, and ArgoCD all expose ServiceMonitors. The pattern
-is consistent across every monitored component.
+The AI Gateway and k8sgpt operator previously exposed ServiceMonitors, but both were
+retired from the cluster. ArgoCD and the remaining platform components can still use
+the ServiceMonitor pattern; it is not a claim that every component has one.
 
 ## NFS for Grafana persistence
 
