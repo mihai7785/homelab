@@ -1,7 +1,7 @@
 # ADR-005: AI Integration Strategy
 
 **Date:** 2026-02
-**Status:** Accepted
+**Status:** Accepted as a historical design; k3s consumers retired (2026-10-01)
 
 ## Context
 
@@ -12,7 +12,7 @@ workflows.
 
 The available hardware includes an Asus NUC14+ with 96GB RAM and an NVIDIA RTX 4080
 Super (16GB VRAM) connected via Thunderbolt as an eGPU, running Windows 11. The k3s
-cluster runs on separate Proxmox VMs with no GPU access.
+server runs on Proxmox VM 301, with three Raspberry Pi workers; none has this GPU.
 
 The long-term vision extends beyond platform tooling: the same AI infrastructure should
 eventually serve Home Assistant voice automation, smart home habit learning, and a
@@ -20,6 +20,11 @@ network-aware assistant ("Jarvis-like") that monitors both the homelab and home 
 This broader scope influenced several decisions.
 
 ## Decisions
+
+**Deployment update (2026-10-01):** Ollama remains outside k3s. Open WebUI, k8sgpt,
+and the AI Gateway were retired from the cluster. The decisions below preserve the
+original Phase 7 reasoning and do not describe active Kubernetes services. The
+AI Gateway source code remains in `apps/`; its GitOps deployment does not.
 
 ### 1. Ollama on bare metal (Windows), not in k3s
 
@@ -41,17 +46,18 @@ system on the homelab network — k3s services, Home Assistant, and future agent
 
 ### 2. Ollama as the central AI hub
 
-Rather than deploying separate AI backends per use case, a single Ollama instance serves
-all consumers: Open WebUI, k8sgpt, the AI Gateway, and future Home Assistant integration.
+Rather than deploying separate AI backends per use case, the design placed Ollama on a
+single host for the former Open WebUI, k8sgpt and AI Gateway consumers and potential
+future Home Assistant integration. Those three cluster consumers are no longer deployed.
 
 **Rationale:** This mirrors the microservices pattern of a shared platform service with
 multiple consumers. It centralizes model management (pull once, use everywhere), simplifies
 monitoring (one endpoint to observe), and avoids running duplicate model weights in memory.
 With 96GB RAM and 16GB VRAM, the NUC has capacity for multiple concurrent model loads.
 
-### 3. Open WebUI deployed in k3s
+### 3. Open WebUI in k3s (retired)
 
-The chat interface runs as a StatefulSet in k3s (namespace: `open-webui`) rather than
+The chat interface formerly ran as a StatefulSet in k3s (namespace: `open-webui`) rather than
 locally on the NUC, with HTTPS ingress at `openwebui.homelab.local`.
 
 **Rationale:** Keeping the UI in k3s maintains the principle that user-facing services
@@ -59,11 +65,11 @@ belong to the platform. It benefits from the existing ingress, TLS, NFS persiste
 ArgoCD lifecycle management. Open WebUI also provides a foundation for future RAG
 (retrieval-augmented generation) workflows and multi-user access.
 
-### 4. k8sgpt for AI-powered cluster diagnostics
+### 4. k8sgpt for AI-powered cluster diagnostics (retired)
 
-k8sgpt-operator is deployed in k3s with Ollama as the AI backend. It continuously
-analyzes cluster resources and stores findings as Kubernetes CRDs (`Result` objects),
-with a ServiceMonitor exposing metrics to Prometheus.
+k8sgpt-operator was deployed in k3s with Ollama as the AI backend. It analyzed
+cluster resources and stored findings as Kubernetes CRDs (`Result` objects),
+with a ServiceMonitor exposing metrics to Prometheus. It is not deployed now.
 
 **Alternatives considered:**
 - Cloud-backed k8sgpt (OpenAI, Azure OpenAI) — rejected to avoid sending cluster state
@@ -79,9 +85,9 @@ on-premises.
 ### 5. "AI generates intent, humans or GitOps execute it"
 
 AI is an input layer to existing workflows, not a bypass of them. The AI Gateway (Phase
-7 continuation) will generate Kubernetes manifests or Terraform code from natural language
-requests but will submit changes via Pull Request rather than applying them directly to
-the cluster.
+7 continuation) was designed to generate Kubernetes manifests or Terraform code from
+natural language requests and submit changes via Pull Request rather than applying them
+directly to the cluster. Its Kubernetes deployment has been retired.
 
 **Rationale:** This mirrors responsible AI integration patterns in production platform
 teams. Maintaining human review (PR approval) and existing automation (ArgoCD sync)
@@ -92,18 +98,18 @@ GitOps principles. AI accelerates intent expression; it does not replace governa
 
 | Model | Purpose | Size | Backend |
 |---|---|---|---|
-| `llama3.1:8b` | General chat, Home Assistant, k8sgpt analysis | 4.9GB | Ollama |
+| `llama3.1:8b` | General chat, prospective Home Assistant use, former k8sgpt analysis | 4.9GB | Ollama |
 | `qwen2.5-coder:7b` | K8s manifest and Terraform generation | 4.7GB | Ollama |
 
-Both models run fully in the RTX 4080's 16GB VRAM. The Thunderbolt eGPU exposes an
-additional ~54GB of shared GPU memory backed by system RAM, enabling larger models
-in the future without hardware changes.
+At design time, both models were expected to fit in the RTX 4080's 16GB VRAM. The
+Thunderbolt eGPU can also use shared GPU memory backed by system RAM. This is a
+historical model selection, not a live inventory of loaded Ollama models.
 
 ## Consequences
 
-- Ollama is a non-Kubernetes dependency. If the NUC is unavailable, AI-dependent
-  services (Open WebUI, k8sgpt, AI Gateway) degrade gracefully but lose AI capability.
-  This is acceptable for a homelab; in production, an HA inference cluster would be used.
+- Ollama is a non-Kubernetes dependency. When the former cluster consumers were
+  deployed, an unavailable NUC removed their AI capability. Those consumers are
+  retired; any future consumer will still depend on the NUC unless redesigned.
 - Windows 11 on the NUC requires manual Ollama service management (restart on reboot,
   environment variable persistence). A future improvement would be configuring Ollama
   as a proper Windows Service with automatic startup.

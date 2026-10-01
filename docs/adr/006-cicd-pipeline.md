@@ -1,7 +1,7 @@
 # ADR-006: CI/CD Pipeline Strategy
 
 **Date:** 2026-02
-**Status:** Accepted
+**Status:** Accepted as a historical CI design; Gitea runner retired (2026-10-01)
 
 ## Context
 
@@ -14,6 +14,12 @@ Three decisions were made in this phase: the CI runner platform, the container r
 and the GitOps update mechanism.
 
 ## Decisions
+
+**Deployment update (2026-10-01):** The Gitea runner Application was retired. The
+`ai-gateway` and `hello-platform` source and GitHub workflows remain in the repo, but
+their GitOps deployment files were removed. Those workflows still reference the removed
+paths when source changes trigger them; they must not be treated as a working deployment
+pipeline. This ADR does not authorize editing `.github/workflows/`.
 
 ### 1. GitHub Actions over Gitea Actions
 
@@ -30,16 +36,16 @@ variables that GitHub Actions injects automatically. Debugging these gaps consum
 significant time without progress.
 
 **Decision:** Use GitHub Actions with the hosted `ubuntu-latest` runner for CI. The
-self-hosted Gitea runner remains deployed and available for future migration once the
-foundational pipeline patterns are stable.
+self-hosted Gitea runner was subsequently retired; a future migration would require a
+new runner deployment and compatibility testing.
 
 **Rationale:**
 1. **Unblocking progress.** A working CI pipeline in 30 minutes on GitHub Actions is
    more valuable than a partially working one on Gitea Actions after several days of
    debugging.
-2. **Same YAML, different runner.** Migrating back to Gitea Actions later requires
-   only changing `runs-on: ubuntu-latest` to `runs-on: gitea-runner` and resolving
-   any remaining compatibility issues. The pipeline logic is identical.
+2. **Portable starting point, not a drop-in migration.** A future Gitea Actions
+   migration would need a new runner, a runner label, and fixes for the compatibility
+   issues above; switching `runs-on` alone is insufficient.
 3. **GitHub Actions ecosystem.** The marketplace actions (`docker/build-push-action`,
    `docker/metadata-action`, `actions/checkout`) are battle-tested on GitHub's hosted
    runners. Using them correctly is more valuable learning than debugging runner
@@ -65,8 +71,8 @@ The original plan included a self-hosted Harbor registry for image storage and s
 
 ### 3. GitOps Manifest Update via `sed` in CI
 
-After pushing an image, the CI pipeline must update the image tag in the GitOps
-manifest so ArgoCD deploys the new version. Two approaches were considered:
+In the original pipeline, after pushing an image CI updated the image tag in the
+GitOps manifest so ArgoCD could deploy the new version. Two approaches were considered:
 
 **Option A:** CI updates the manifest file directly (sed replacement) and commits to main.
 
@@ -91,7 +97,9 @@ back to `main`.
   2,000 free minutes/month.
 - Images are stored on GHCR rather than a self-hosted registry. There is a dependency
   on GitHub's availability for new deployments (existing deployed images are unaffected).
-- The self-hosted Gitea runner is deployed but unused. It should be migrated to as a
-  future improvement once GitHub Actions compatibility is confirmed.
-- The `sed`-based manifest update requires the deployment YAML to contain exactly one
-  matching image line. This is enforced by convention in `gitops/apps/<app>/deployment.yaml`.
+- The self-hosted Gitea runner is no longer deployed. Historical manifests remain in
+  `infrastructure/gitea-runner/`, but no active ArgoCD Application manages them.
+- The `sed`-based manifest update assumed an existing deployment YAML with exactly one
+  matching image line. The demo deployments are retired, so their retained workflows
+  currently reference missing paths. Protected `main` also means direct CI pushes are
+  not an approved deployment path; a new pipeline requires a separate reviewed change.
