@@ -4,7 +4,7 @@ A self-hosted Internal Developer Platform (IDP) built on Kubernetes, following G
 principles. This homelab serves as both a learning environment and a portfolio
 demonstrating real-world platform engineering practices.
 
-> **Status:** ✅ All 7 phases complete — platform fully operational.
+> **Current topology (2026-10-01):** one k3s server VM (301) and three Raspberry Pi workers. Earlier demo AI integrations and the Gitea runner are retired; their source/history remains.
 
 ---
 
@@ -32,11 +32,11 @@ and the **development team** (deploying applications onto it).
          │ push triggers                   │ ArgoCD watches
          ▼                                 ▼
 ┌─────────────────┐              ┌─────────────────────────────────┐
-│  GitHub Actions  │              │        k3s Cluster (3 nodes)    │
-│  Build & push   │──────────────►│                                 │
-│  image to GHCR  │  image tag   │  ArgoCD · Traefik · cert-manager│
-└─────────────────┘  update PR   │  Prometheus · Grafana · Loki    │
-                                 │  Gitea · AI Gateway · k8sgpt    │
+│  GitHub Actions  │              │        k3s Cluster (4 nodes)    │
+│  Build & push   │── GHCR images ►│                                 │
+│  image to GHCR  │              │  ArgoCD · Traefik · cert-manager│
+└─────────────────┘              │  Prometheus · Grafana · Loki    │
+                                 │  Gitea · 1 server + 3 Pi workers│
                                  └──────────────┬──────────────────┘
                                                 │
                   ┌─────────────────────────────┼──────────────────────┐
@@ -49,16 +49,8 @@ and the **development team** (deploying applications onto it).
                                    └─────────────────────┘
 ```
 
-**AI Gateway flow:**
-```
-Natural language → AI Gateway API → Ollama (local GPU) → K8s manifest
-                                                               │
-                                                        GitHub Pull Request
-                                                               │
-                                                     Human review & merge
-                                                               │
-                                                    ArgoCD detects & deploys
-```
+GitOps changes are reviewed in a Pull Request, then ArgoCD reconciles after merge.
+The former AI Gateway API is not deployed; the local Ollama host is separate from k3s.
 
 ---
 
@@ -66,19 +58,22 @@ Natural language → AI Gateway API → Ollama (local GPU) → K8s manifest
 
 | Device | Role | Specs |
 |---|---|---|
-| HP Mini PC | Primary Proxmox hypervisor — hosts all platform VMs | 28 vCPU · 31GB RAM |
-| Asus Mini PC | Secondary Proxmox — Home Assistant + auxiliary VMs | 4 vCPU · 16GB RAM |
+| HP Mini PC | Proxmox hypervisor — hosts k3s server VM 301 | 28 vCPU · 31GB RAM |
+| ROG laptop / old Intel NUC | Additional Proxmox nodes; old NUC hosts Home Assistant | See live host inventory |
 | Synology DS1525+ | NAS — NFS persistent storage for k3s PVCs | 7TB usable |
 | Asus NUC14+ | AI workloads — Ollama with RTX 4080 Super eGPU | 96GB RAM · 16GB VRAM |
-| Raspberry Pi 4B ×3 | Reserved for future worker node expansion | 4GB RAM each |
+| Raspberry Pi ×3 | Active ARM64 k3s workers | See live node inventory |
 
-**k3s cluster nodes (Proxmox VMs on HP Mini PC):**
+**k3s cluster nodes:**
 
-| Node | Role | vCPU | RAM |
-|---|---|---|---|
-| k3s-server-01 | Control plane + worker | 4 | 8GB |
-| k3s-worker-01 | Worker | 4 | 8GB |
-| k3s-worker-02 | Worker | 4 | 8GB |
+| Node | Role | Architecture |
+|---|---|---|
+| k3s-server-01 (Proxmox VM 301) | Sole server/control plane; also runs workloads | amd64 |
+| raspberry-agentic-main | Worker, SSD storage label | arm64 |
+| raspberry-agentic-slave1 | Worker, SD-card storage label | arm64 |
+| raspberry-agentic-slave2 | Worker, SD-card storage label | arm64 |
+
+Former worker VMs 302 and 303 have been retired. See [ADR-008](docs/adr/008-single-server-pi-workers.md) for the single-server trade-off.
 
 ---
 
@@ -90,17 +85,17 @@ homelab/
 │   ├── hello-platform/     # Reference FastAPI app — Dockerfile, CI pipeline
 │   └── ai-gateway/         # AI Gateway API — natural language → K8s manifests
 ├── gitops/
-│   └── apps/               # ArgoCD Application manifests (App-of-Apps pattern)
-│       ├── ai-generated/   # Landing zone for AI Gateway generated manifests
-│       └── */              # One directory per deployed application
+│   └── apps/               # Current ArgoCD Application manifests (App-of-Apps)
+│       ├── ai-generated/   # Retained placeholder; AI Gateway is retired
+│       └── */              # Manifests for deployed applications
 ├── infrastructure/
-│   └── k8sgpt/             # k8sgpt custom resource definition
+│   └── terraform/          # VM 301 definition; former workers 302/303 retired
 ├── monitoring/
 │   └── dashboards/         # Grafana dashboard JSON exports
 ├── platform/
 │   └── values/             # Helm values files for all platform components
 └── docs/
-    └── adr/                # Architecture Decision Records (001–007)
+    └── adr/                # Architecture Decision Records (001–008)
 ```
 
 ---
@@ -120,7 +115,7 @@ homelab/
 
 | Tool | Purpose |
 |---|---|
-| **k3s** | Lightweight Kubernetes — 3-node cluster (1 control plane, 2 workers) |
+| **k3s** | Lightweight Kubernetes — 4-node cluster (1 server, 3 Pi workers) |
 | **Helm** | Package manager — deploy and configure all platform components |
 | **Traefik** | Ingress controller — HTTPS termination, routing, automatic redirects |
 | **MetalLB** | Load balancer — assigns external IPs to LoadBalancer services |
@@ -159,15 +154,13 @@ homelab/
 | Tool | Purpose |
 |---|---|
 | **Ollama** | Local LLM runtime — bare metal on NUC14+, GPU-accelerated |
-| **Open WebUI** | Chat interface — deployed in k3s, connects to Ollama |
-| **k8sgpt** | AI cluster diagnostics — explains issues via Ollama, stores as CRDs |
-| **AI Gateway** | FastAPI service — natural language → K8s manifest → GitHub PR |
+| **Former demo consumers** | Open WebUI, k8sgpt, and AI Gateway are no longer deployed in k3s; AI Gateway source remains under `apps/` |
 
 ---
 
 ## 🚀 Platform Services
 
-All services run on `*.homelab.local` with valid TLS certificates (green padlock).
+The table lists platform endpoints configured in Git; test live availability separately.
 
 | Service | URL | Description |
 |---|---|---|
@@ -176,54 +169,24 @@ All services run on `*.homelab.local` with valid TLS certificates (green padlock
 | Prometheus | `https://prometheus.homelab.local` | Metrics query interface |
 | Alertmanager | `https://alertmanager.homelab.local` | Alert management |
 | Gitea | `https://gitea.homelab.local` | Self-hosted Git server |
-| Open WebUI | `https://openwebui.homelab.local` | Local AI chat interface |
-| AI Gateway | `https://ai-gateway.homelab.local` | Natural language → manifest API |
-| AI Gateway Docs | `https://ai-gateway.homelab.local/docs` | Interactive Swagger UI |
 
 ---
 
 ## 🤖 AI Integration
 
-Phase 7 added a local AI layer that maintains the GitOps workflow rather than bypassing it.
+Phase 7 explored a local AI layer. Ollama remains outside Kubernetes; the Open WebUI,
+k8sgpt, and AI Gateway cluster deployments were later retired.
 
-**Core principle:** AI generates intent, humans or GitOps execute it. No AI component
-has direct cluster access.
+**Core principle:** AI may generate intent, but reviewed GitOps changes execute it.
 
-### AI Gateway — Usage Example
-
-```bash
-# Generate a Kubernetes manifest from natural language
-curl -k -X POST https://ai-gateway.homelab.local/generate/manifest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "deploy nginx with 2 replicas and expose it on port 80",
-    "app_name": "nginx-demo"
-  }'
-
-# Returns:
-# {
-#   "pr_url": "https://github.com/mihai7785/homelab/pull/N",
-#   "branch": "ai-gateway/nginx-demo-abc123",
-#   "manifest": "apiVersion: apps/v1\nkind: Deployment...",
-#   "app_name": "nginx-demo"
-# }
-```
-
-The API opens a Pull Request with the generated manifest. A human reviews and merges.
-ArgoCD detects the merged change and deploys to the `ai-generated` namespace.
-
-### Models
-
-| Model | Size | Use |
-|---|---|---|
-| `llama3.1:8b` | 4.9GB (Q4_K_M) | General chat, k8sgpt diagnostics, Home Assistant (future) |
-| `qwen2.5-coder:7b` | 4.7GB (Q4_K_M) | K8s manifest and Terraform code generation |
-
-Both models run simultaneously in the RTX 4080 Super's 16GB VRAM.
+The previous AI Gateway usage example is historical, not a live endpoint. See
+[ADR-005](docs/adr/005-ai-integration-strategy.md) for the original design and its
+retirement note. Verify the current Ollama model inventory on the NUC before naming
+loaded models.
 
 ---
 
-## ✅ Build Phases
+## ✅ Build Phases (historical milestones, not current deployment inventory)
 
 | Phase | Focus | Status |
 |---|---|---|
@@ -232,8 +195,8 @@ Both models run simultaneously in the RTX 4080 Super's 16GB VRAM.
 | **3 — Certificates** | cert-manager, private CA, HTTPS for all services | ✅ Complete |
 | **4 — CI/CD** | GitHub Actions, GHCR, GitOps manifest update loop | ✅ Complete |
 | **5 — Observability** | kube-prometheus-stack, Loki, Grafana dashboards | ✅ Complete |
-| **6 — Self-hosted Git** | Gitea server, Gitea runner, GitHub mirror | ✅ Complete |
-| **7 — AI Integration** | Ollama, Open WebUI, k8sgpt, AI Gateway API | ✅ Complete |
+| **6 — Self-hosted Git** | Gitea server, formerly Gitea runner, GitHub mirror | ✅ Milestone; runner retired |
+| **7 — AI Integration** | Ollama; former Open WebUI, k8sgpt, AI Gateway API | ✅ Milestone; k3s consumers retired |
 
 ---
 
@@ -252,15 +215,17 @@ considered, and what trade-offs were accepted.
 | [ADR-005](docs/adr/005-ai-integration-strategy.md) | AI integration architecture — local inference, GitOps-first |
 | [ADR-006](docs/adr/006-cicd-pipeline.md) | GitHub Actions over Gitea Actions, GHCR over Harbor |
 | [ADR-007](docs/adr/007-observability.md) | kube-prometheus-stack, Loki, unified Grafana |
+| [ADR-008](docs/adr/008-single-server-pi-workers.md) | One k3s server VM with three Raspberry Pi workers |
 
 ---
 
 ## 📝 Notes
 
 This is a living project built in parallel with studying for platform engineering roles
-in Belgium. Every component serves a deliberate purpose — tools are not added for their
+in Switzerland. Every component serves a deliberate purpose — tools are not added for their
 own sake.
 
-The AI Gateway is the centrepiece of Phase 7: it demonstrates responsible AI integration
-in a platform engineering context — AI as an accelerator for the authoring step, with the
-existing GitOps review and deployment process fully preserved.
+Demo workloads retired from Kubernetes can still have source code and CI workflows in
+the repository. In particular, the retained `ai-gateway` and `hello-platform` workflows
+reference deployment YAML paths removed by the retirement PR; do not treat a source
+build as a working deployment or modify protected workflows as part of housekeeping.

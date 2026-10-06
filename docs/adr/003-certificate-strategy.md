@@ -23,6 +23,8 @@ Three approaches were considered:
 
 **Hybrid: Option B for internal services + Option C for any externally-referenced services.**
 
+The deployment list below records the original design, not a verified inventory of current issuers. In particular, the step-ca LXC placement was a plan; review the live `step-ca` namespace and cert-manager issuers before changing any CA resources.
+
 Specifically:
 - Deploy **step-ca** as an internal CA (LXC container on main Proxmox)
 - Deploy **cert-manager** in the k3s cluster
