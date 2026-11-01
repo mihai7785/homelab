@@ -14,6 +14,7 @@ RUN apt-get -o Acquire::Retries=3 update && \
     /usr/local/bin/marketing-tini --version && ffmpeg -version >/dev/null && \
     browser_bin="$(python3 -c 'from pm import installed_package; print(installed_package("chromium").binary)')" && \
     test -x "$browser_bin" && "$browser_bin" --version && \
+    ln -s "$browser_bin" /usr/local/bin/marketing-chromium && \
     fc-match 'DejaVu Sans:lang=ro' >/dev/null
 
 # Upstream's sealed Python environment does not include the optional
@@ -25,6 +26,9 @@ RUN uv_bin="$(python3 -c 'from pm import installed_package; print(installed_pack
     /opt/hermes/.venv/bin/python -c 'import playwright; from playwright.sync_api import sync_playwright'
 
 COPY --chmod=0755 entrypoint.sh /usr/local/bin/marketing-entrypoint
+# Bypassing upstream s6 also bypasses its stage2 export of this variable.
+# The symlink above resolves to PM's pinned Chromium for this exact image.
+ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/local/bin/marketing-chromium
 ENV HOME=/opt/data HERMES_HOME=/opt/data XDG_RUNTIME_DIR=/opt/data/.runtime
 USER 10000:10000
 ENTRYPOINT ["/usr/local/bin/marketing-tini", "-g", "--", "/usr/local/bin/marketing-entrypoint"]

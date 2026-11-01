@@ -25,3 +25,10 @@ spec:
             severity: critical
           annotations:
             summary: 'k3s-server-01 root filesystem has under 8 GiB available'
+        - alert: MarketingAgentNodeDiskMetricsMissing
+          expr: 'absent(node_filesystem_avail_bytes{instance="192.168.1.201:9100",mountpoint="/",fstype="ext4"})'
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'k3s-server-01 root filesystem metric is missing'
