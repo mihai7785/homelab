@@ -31,10 +31,10 @@ spec:
           type: RuntimeDefault
       containers:
         - name: hermes
-          # BLOCKER: replace with the immutable GHCR digest built by Mihai's
-          # workflow BEFORE merging this PR. This tag intentionally does not exist.
-          image: ghcr.io/mihai7785/marketing-agent:pending-build
-          imagePullPolicy: IfNotPresent
+          # Local-only image on k3s-server-01. BLOCKER: build/import not complete;
+          # do not merge until the imported tag and image ID are verified.
+          image: localhost/marketing-agent:phase1-ef4b693f9079044e
+          imagePullPolicy: Never
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

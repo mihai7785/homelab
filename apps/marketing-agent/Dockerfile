@@ -21,7 +21,8 @@ RUN apt-get -o Acquire::Retries=3 update && \
 # google-meet/Playwright extra. Use the upstream pinned uv provisioner to
 # add the exact Playwright version; the browser executable remains upstream's
 # pinned full Chromium, selected explicitly at runtime.
-RUN uv_bin="$(python3 -c 'from pm import installed_package; print(installed_package("uv").binary)')" && \
+RUN uv_bin="$(python3 -c 'from pm import uv_launcher; print(uv_launcher("uv"))')" && \
+    test -x "$uv_bin" && \
     "$uv_bin" pip install --python /opt/hermes/.venv/bin/python 'playwright==1.64.0' && \
     /opt/hermes/.venv/bin/python -c 'import playwright; from playwright.sync_api import sync_playwright'
 

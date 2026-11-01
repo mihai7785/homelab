@@ -1,46 +1,14 @@
 # Marketing agent: gated rollout (not deployment authorization)
 
-This PR is **draft and must not merge yet**. `:pending-build` in the Deployment intentionally points to no image; replace it by `ghcr.io/mihai7785/marketing-agent@sha256:<actual GHCR digest>` in a reviewed PR after the image is built and its amd64 manifest is checked. No workflow is changed by Hermes. Mihai owns `.github/workflows/`.
+This PR is **draft and must not merge yet**. The image is built only on `dockerhome`, then streamed over SSH into the `k8s.io` containerd namespace on `k3s-server-01`; there is no GHCR, GitHub Actions workflow or registry pull. The fixed source-derived tag in the Deployment is `localhost/marketing-agent:phase1-ef4b693f9079044e` with `imagePullPolicy: Never`. This tag is a hash of `Dockerfile` and `entrypoint.sh`, not a registry digest; a rebuild with identical sources can differ if apt/PyPI dependencies change. Record the actual image ID and rebuild/reimport before rollout if the source changes. A local image exists only on the node where imported; the Deployment is pinned to that node. Never use `latest` or a floating pull.
 
-## Workflow for Mihai to add
+## Reproducible local build and transfer
 
-Copy the following complete YAML into `.github/workflows/marketing-agent-ci.yaml` **on the default branch (`main`)** yourself; GitHub requires a `workflow_dispatch` workflow to exist on the default branch before it can be run manually. It is intentionally *not* in that directory in this PR. Once your workflow commit is on `main`, Hermes will update/rebase this PR branch onto that commit, so the workflow is also present at the dispatched ref; this is not a workflow edit by Hermes. It builds only when manually dispatched on the reviewed `agent/marketing-agent-isolation` branch, pushes an immutable SHA tag, reports a registry digest and never commits to `main` or edits GitOps. The repository's `packages: write` permission must be available to GitHub Actions; no personal token is needed.
+Run `bash apps/marketing-agent/build-local.sh` **from this repository checkout on Hermes-lab, after dockerhome has at least 8 GiB free without deleting unrelated images**. The script checks free space on both hosts (minimum 8 GiB each); before starting, also inspect `docker system df` and service health because the Docker daemon hosts unrelated services. On 2026-11-01, dockerhome had 4.6 GiB free and k3s-server-01 had 21 GiB. A trial build failed first on the upstream PM `uv` locator (fixed here), then a second attempt installed Playwright but was **stopped before image export/import** when dockerhome reached only 817 MiB free. The temporary builder and its unshared auxiliary image were removed; dockerhome returned to 4.6 GiB free, and the fixed tag is **not** in k3s containerd. The base's compressed amd64 layers total ~0.99 GiB, but extraction/build/export need much more. Do **not** merge until additional disk headroom is provided and build, import and verification actually succeed; do not prune shared images or volumes.
 
-```yaml
-name: marketing-agent image
-on:
-  workflow_dispatch:
-permissions:
-  contents: read
-  packages: write
-jobs:
-  build-amd64:
-    if: github.ref == 'refs/heads/agent/marketing-agent-isolation'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: apps/marketing-agent
-          platforms: linux/amd64
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/marketing-agent:sha-${{ github.sha }}
-      - name: Report immutable reference
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          test -n "$DIGEST"
-          echo "Image: ghcr.io/${{ github.repository_owner }}/marketing-agent@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
-```
+The script streams only `Dockerfile` and `entrypoint.sh` to a **dedicated temporary buildx builder** on dockerhome, builds amd64 and loads the fixed tag, then streams `docker save` into `sudo -n k3s ctr -n k8s.io images import -`. It checks the imported tag and unpack state, and removes **only its own** temporary builder/cache and, if it was absent before the build and is unused afterward, the auxiliary BuildKit image, even on failure. It leaves the final tagged image on dockerhome for recovery. Do not run `docker system prune`, `docker volume prune`, or delete images used by other services. For a later image rebuild, rerun the same script and review its new source hash; tag collisions are possible when upstream dependencies mutate without source changes, so record/check the built image ID. Import on every potential target node if scheduling ever changes.
 
-After the workflow lands on `main` and this branch is updated to include it, run it on this PR's reviewed head (e.g. `gh workflow run marketing-agent-ci.yaml --ref agent/marketing-agent-isolation`), verify the job, digest and architecture, then replace `:pending-build` by the reported digest via a new commit on this branch. **Do not merge while the placeholder remains or while GHCR anonymous pull is unverified.** The own-node exception below is a specifically accepted phase-1 risk, not a requirement to change host networking now. The image may be public-readable in GHCR, or a separately approved registry pull credential would be required; neither is assumed here. This upstream image is pinned to a Docker Hub index digest dated 2026-10-23; re-verify before a later rebuild. The upstream already stages Chromium and ffmpeg; the derived image adds Playwright Python, actual `tini`, and Romanian-capable fonts, and exports `AGENT_BROWSER_EXECUTABLE_PATH` because the upstream s6 hook is bypassed. The image build and restricted/non-root runtime remain unverified until this workflow and pod smoke tests run.
+The upstream already stages Chromium and ffmpeg; the derived image adds Playwright Python, real `tini` and Romanian-capable fonts, and exports `AGENT_BROWSER_EXECUTABLE_PATH` because the upstream s6 hook is bypassed. The image build and restricted/non-root runtime are separate checks: import success does not prove the pod will pass admission or execute correctly. The own-node exception below is a specifically accepted phase-1 risk, not a requirement to change host networking now.
 
 ## Secret and GitOps gates
 
