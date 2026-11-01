@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: marketing-agent-node-disk
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: marketing-agent-node-disk
+      rules:
+        # Live node-exporter labels checked 2026-11-01: instance
+        # 192.168.1.201:9100, mountpoint /, fstype ext4, /dev/sda1.
+        - alert: MarketingAgentNodeDiskLow
+          expr: 'node_filesystem_avail_bytes{instance="192.168.1.201:9100",mountpoint="/",fstype="ext4"} < 12 * 1024 * 1024 * 1024'
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'k3s-server-01 root filesystem has under 12 GiB available'
+        - alert: MarketingAgentNodeDiskCritical
+          expr: 'node_filesystem_avail_bytes{instance="192.168.1.201:9100",mountpoint="/",fstype="ext4"} < 8 * 1024 * 1024 * 1024'
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: 'k3s-server-01 root filesystem has under 8 GiB available'
