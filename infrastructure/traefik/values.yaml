@@ -7,6 +7,10 @@ providers:
 
 service:
   type: LoadBalancer
+  # Preserve the real LAN source IP for Traefik ipAllowList. Roll out only
+  # after a Tier 3 approval and an explicit MetalLB L2/ingress check.
+  spec:
+    externalTrafficPolicy: Local
 
 ports:
   web:
