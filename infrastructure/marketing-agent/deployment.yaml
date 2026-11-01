@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: marketing-agent
+  namespace: marketing-agent
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: marketing-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: marketing-agent
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k3s-server-01
+        kubernetes.io/arch: amd64
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: hermes
+          # Local-only image on k3s-server-01. BLOCKER: build/import not complete;
+          # do not merge until the imported tag and image ID are verified.
+          image: localhost/marketing-agent:phase1-ef4b693f9079044e
+          imagePullPolicy: Never
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1500m
+              memory: 1536Mi
+          env:
+            - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef: { name: marketing-agent-serve-auth, key: username }
+            - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: marketing-agent-serve-auth, key: password }
+            - name: HERMES_DASHBOARD_BASIC_AUTH_SECRET
+              valueFrom:
+                secretKeyRef: { name: marketing-agent-serve-auth, key: signing-secret }
+          ports:
+            - { name: http, containerPort: 9119, protocol: TCP }
+          startupProbe:
+            exec:
+              command:
+                - /opt/hermes/.venv/bin/python
+                - -c
+                - "import socket; s=socket.create_connection(('127.0.0.1',9119),2); s.close()"
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - /opt/hermes/.venv/bin/python
+                - -c
+                - "import socket; s=socket.create_connection(('127.0.0.1',9119),2); s.close()"
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - /opt/hermes/.venv/bin/python
+                - -c
+                - "import socket; s=socket.create_connection(('127.0.0.1',9119),2); s.close()"
+            periodSeconds: 30
+          volumeMounts:
+            - { name: home, mountPath: /opt/data }
+            - { name: tmp, mountPath: /tmp }
+            - { name: shm, mountPath: /dev/shm }
+      volumes:
+        - name: home
+          persistentVolumeClaim:
+            claimName: marketing-agent-home
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
