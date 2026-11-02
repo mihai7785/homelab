@@ -31,8 +31,9 @@ spec:
           type: RuntimeDefault
       containers:
         - name: hermes
-          # Local-only image on k3s-server-01. BLOCKER: build/import not complete;
-          # do not merge until the imported tag and image ID are verified.
+          # Local-only amd64 image imported on k3s-server-01 (2026-11-02).
+          # Keep this fixed tag paired with imagePullPolicy: Never; rebuild and
+          # reimport on that node before changing the image source or placement.
           image: localhost/marketing-agent:phase1-ef4b693f9079044e
           imagePullPolicy: Never
           securityContext:

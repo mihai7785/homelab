@@ -41,6 +41,20 @@ fi
 remote "docker buildx create --name '$builder' --driver docker-container --bootstrap >/dev/null"
 tar -cf - Dockerfile entrypoint.sh | remote "docker buildx build --builder '$builder' --platform linux/amd64 --progress=plain --load --tag '$image' -"
 remote "docker image inspect '$image' --format 'Built image={{.Id}} size={{.Size}} architecture={{.Architecture}}'"
+image_bytes=$(remote "docker image inspect '$image' --format '{{.Size}}'")
+node_free_bytes=$(node 'df -B1 --output=avail /var/lib/rancher/k3s | awk "NR==2 {print \$1}"')
+# Conservative import allowance: image bytes for containerd content and again
+# for unpacked snapshots, plus the planned 5 GiB PVC (local-path has no quota).
+# Leave 1 GiB above the 8 GiB critical alert even under that projection.
+projected=$((node_free_bytes - 2 * image_bytes - 5 * 1024 * 1024 * 1024))
+printf 'k3s pre-import free=%s image=%s projected free after import+5GiB PVC=%s bytes\n' "$node_free_bytes" "$image_bytes" "$projected"
+if (( projected < 9 * 1024 * 1024 * 1024 )); then
+  echo 'Projected disk below 9 GiB safety floor; image built, but import refused.' >&2
+  exit 1
+fi
+if (( projected < 12 * 1024 * 1024 * 1024 )); then
+  echo 'WARNING: projected usage of the full PVC could trigger the 12 GiB disk alert.' >&2
+fi
 # The only target is the k8s.io namespace in this server's k3s containerd.
 remote "docker save '$image'" | node 'sudo -n k3s ctr -n k8s.io images import -'
 node "sudo -n k3s ctr -n k8s.io images ls -q | grep -Fx '$image' >/dev/null"
