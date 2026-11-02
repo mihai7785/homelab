@@ -4,7 +4,8 @@ metadata:
   name: marketing-agent-home
   namespace: marketing-agent
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    # local-path uses WaitForFirstConsumer; apply with the Deployment so the PVC can bind.
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: local-path
