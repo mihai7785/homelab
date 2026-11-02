@@ -21,6 +21,8 @@ spec:
         kubernetes.io/hostname: k3s-server-01
         kubernetes.io/arch: amd64
       automountServiceAccountToken: false
+      # Desktop gateway status/restart validates the live PID across containers.
+      shareProcessNamespace: true
       terminationGracePeriodSeconds: 30
       securityContext:
         runAsNonRoot: true
@@ -49,6 +51,9 @@ spec:
               cpu: 1500m
               memory: 1536Mi
           env:
+            # With a shared PID namespace tini is not PID 1; reap child tools.
+            - name: TINI_SUBREAPER
+              value: "1"
             - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
               valueFrom:
                 secretKeyRef: { name: marketing-agent-serve-auth, key: username }
@@ -86,6 +91,55 @@ spec:
             - { name: home, mountPath: /opt/data }
             - { name: tmp, mountPath: /tmp }
             - { name: shm, mountPath: /dev/shm }
+        - name: gateway
+          # One foreground gateway per HERMES_HOME; Kubernetes supervises this
+          # container independently of hermes serve (no s6 or second API port).
+          image: localhost/marketing-agent:phase1-ef4b693f9079044e
+          imagePullPolicy: Never
+          command: ["/usr/local/bin/marketing-tini", "-s", "-g", "--", "/bin/sh", "-ec"]
+          args:
+            - |
+              test -w /opt/data
+              mkdir -p "$XDG_RUNTIME_DIR"
+              chmod 0700 "$XDG_RUNTIME_DIR"
+              exec /opt/hermes/.venv/bin/hermes gateway run --no-supervise --external-supervisor
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          # A running process alone is not proof the scheduler/control loop is ready.
+          # Do not make the serve Service endpoint Ready before the gateway replies.
+          startupProbe:
+            exec:
+              command:
+                - /opt/hermes/.venv/bin/python
+                - -B
+                - -c
+                - 'from pathlib import Path; from gateway.control_socket import identify_gateway; i=identify_gateway(Path("/opt/data"), timeout=1.0); raise SystemExit(0 if i and i.get("pid") else 1)'
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+                - /opt/hermes/.venv/bin/python
+                - -B
+                - -c
+                - 'from pathlib import Path; from gateway.control_socket import identify_gateway; i=identify_gateway(Path("/opt/data"), timeout=1.0); raise SystemExit(0 if i and i.get("pid") else 1)'
+            periodSeconds: 10
+            timeoutSeconds: 3
+          volumeMounts:
+            - { name: home, mountPath: /opt/data }
+            - { name: gateway-tmp, mountPath: /tmp }
+            - { name: gateway-shm, mountPath: /dev/shm }
       volumes:
         - name: home
           persistentVolumeClaim:
@@ -94,6 +148,13 @@ spec:
           emptyDir:
             sizeLimit: 256Mi
         - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+        - name: gateway-tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: gateway-shm
           emptyDir:
             medium: Memory
             sizeLimit: 256Mi
