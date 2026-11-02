@@ -26,7 +26,7 @@ resource "proxmox_virtual_environment_vm" "k3s_server" {
 
   disk {
     datastore_id = "local-lvm"
-    size         = 40
+    size         = 60
     interface    = "scsi0"
   }
 
